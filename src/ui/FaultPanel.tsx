@@ -31,7 +31,7 @@ export function FaultPanel() {
     <View style={styles.box}>
       <Text style={styles.title}>Make the server fail</Text>
       <Text style={styles.copy}>
-        For the test. Saved reports stay on this phone. Only the next upload requests are affected.
+        Tap one, then save a report. The phone keeps it and tries again. Normal turns the failure off.
       </Text>
       <View style={styles.row}>
         {OPTIONS.map(option => (

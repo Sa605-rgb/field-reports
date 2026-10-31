@@ -57,7 +57,13 @@ export function HomeScreen() {
         <Text style={styles.serverLine}>{serverLine}</Text>
       </View>
       {state.readError ? <Text style={styles.error}>{state.readError}</Text> : null}
+      <View style={styles.steps}>
+        <Text style={styles.step}>1. New report. Write a note and add 1 to 5 photos.</Text>
+        <Text style={styles.step}>2. Save on this phone. That is not uploaded.</Text>
+        <Text style={styles.step}>3. On the server is a separate list. It fills in only after the server accepts the photos.</Text>
+      </View>
       <BigButton label="New report" onPress={() => navigation.navigate('Compose')} />
+      <FaultPanel />
       <SectionTitle>ON THIS PHONE</SectionTitle>
       {state.reports.length === 0 ? (
         <EmptyLine>Nothing is saved on this phone.</EmptyLine>
@@ -67,7 +73,7 @@ export function HomeScreen() {
         ))
       )}
       <SectionTitle>ON THE SERVER</SectionTitle>
-      <Text style={styles.hint}>Fetched from the server. This is not the phone queue. Pull is the refresh button below.</Text>
+      <Text style={styles.hint}>This list comes from the server. It is not the phone queue.</Text>
       <BigButton label={state.refreshing ? 'Refreshing…' : 'Refresh server list'} tone="ghost" disabled={state.refreshing} onPress={() => runner.refreshServer()} />
       {state.serverReports.length === 0 ? (
         <EmptyLine>
@@ -89,9 +95,9 @@ export function HomeScreen() {
             </Pressable>
           ))
       )}
-      <FaultPanel />
       <View style={styles.resetWrap}>
         <BigButton label={resetting ? 'Clearing…' : 'Clear this phone'} tone="ghost" disabled={resetting} onPress={confirmReset} />
+        <Text style={styles.hint}>This deletes the queue on the phone. Reports already on the server stay there.</Text>
       </View>
     </ScrollView>
   );
@@ -133,6 +139,16 @@ const styles = StyleSheet.create({
   headline: { color: '#FFFDF8', fontSize: 28, fontWeight: '700', marginTop: 8 },
   serverLine: { color: '#E7E1D6', marginTop: 8, fontSize: 15, lineHeight: 21 },
   error: { color: colors.stop, marginBottom: 12 },
+  steps: {
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.line,
+    padding: 14,
+    marginBottom: 16,
+    gap: 8,
+  },
+  step: { color: colors.ink, fontSize: 15, lineHeight: 21 },
   hint: { color: colors.muted, marginBottom: 10, lineHeight: 20 },
   card: {
     backgroundColor: colors.card,
