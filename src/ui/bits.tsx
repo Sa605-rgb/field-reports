@@ -58,7 +58,7 @@ const styles = StyleSheet.create({
   ghost: { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.line },
   disabled: { opacity: 0.45 },
   pressed: { opacity: 0.8 },
-  label: { color: '#FFFDF8', fontSize: 16, fontWeight: '700' },
+  label: { color: colors.cream, fontSize: 16, fontWeight: '700', letterSpacing: 0.2 },
   ghostLabel: { color: colors.ink },
   section: {
     marginTop: 22,

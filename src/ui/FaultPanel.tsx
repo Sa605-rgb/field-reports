@@ -5,21 +5,24 @@ import { setFault } from '../api/http';
 import { colors } from '../ui/theme';
 
 const OPTIONS = [
-  { label: 'Normal', mode: 'off', requests: 0 },
-  { label: 'Slow', mode: 'slow', requests: 2 },
-  { label: 'Drop twice', mode: 'drop', requests: 2 },
-  { label: 'Refuse', mode: 'refuse', requests: 1 },
-  { label: 'Hang', mode: 'hang', requests: 1 },
+  { label: 'Normal', mode: 'off', requests: 0, line: 'The server answers. This turns the failure off.' },
+  { label: 'Slow', mode: 'slow', requests: 2, line: 'The server waits, like a bad signal. The phone keeps sending.' },
+  { label: 'Drop twice', mode: 'drop', requests: 2, line: 'The line dies twice in the middle. The phone tries again. The photo is not sent twice.' },
+  { label: 'Refuse', mode: 'refuse', requests: 1, line: 'The server says no. The report stays on this phone and is tried again.' },
+  { label: 'Hang', mode: 'hang', requests: 1, line: 'The server never answers. The phone does not sit on a spinner. It tries again.' },
 ] as const;
 
 export function FaultPanel() {
-  const [note, setNote] = useState('The server answers normally until you pick a failure.');
+  const [picked, setPicked] = useState<(typeof OPTIONS)[number]['label']>('Normal');
+  const [note, setNote] = useState(OPTIONS[0].line);
   const [busy, setBusy] = useState(false);
 
-  async function choose(mode: (typeof OPTIONS)[number]['mode'], requests: number) {
+  async function choose(option: (typeof OPTIONS)[number]) {
     setBusy(true);
     try {
-      setNote(await setFault(mode, requests));
+      await setFault(option.mode, option.requests);
+      setPicked(option.label);
+      setNote(option.line);
     } catch {
       setNote('Could not reach the server to change it.');
     } finally {
@@ -39,9 +42,9 @@ export function FaultPanel() {
             key={option.label}
             accessibilityRole="button"
             disabled={busy}
-            onPress={() => choose(option.mode, option.requests)}
-            style={styles.chip}>
-            <Text style={styles.chipLabel}>{option.label}</Text>
+            onPress={() => choose(option)}
+            style={[styles.chip, picked === option.label && styles.chipOn]}>
+            <Text style={[styles.chipLabel, picked === option.label && styles.chipLabelOn]}>{option.label}</Text>
           </Pressable>
         ))}
       </View>
@@ -72,6 +75,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: colors.paper,
   },
+  chipOn: { backgroundColor: colors.ink, borderColor: colors.ink },
   chipLabel: { color: colors.ink, fontWeight: '700' },
+  chipLabelOn: { color: colors.cream },
   note: { marginTop: 12, color: colors.ink, lineHeight: 20 },
 });

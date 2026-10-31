@@ -1,6 +1,10 @@
 ## Field Reports
 
-A React Native app for one inspector on a bad connection. A report is a short note and one to five photos. Saving it on the phone and getting it onto the server are two different facts, and the screen never treats them as the same thing.
+One inspector, one phone, and a bad connection. The report is a short note and 1 to 5 photos. The network is often 2G and it dies in the middle of a send. The report still has to reach the server, exactly once.
+
+Saving a report on the phone and having it on the server are two different facts. The screen never treats them as the same thing.
+
+There is no login. The brief asked for none. The person using it is the inspector standing on site.
 
 ## Run it
 
@@ -13,7 +17,7 @@ npm install
 npm start
 ```
 
-The server listens on `http://0.0.0.0:8787`.
+The server listens on `http://0.0.0.0:8787`. It is a small Express app in this repo. The backend is not the scored part. Express is here so a reviewer can make it slow, drop, refuse, or hang on command.
 
 Terminal 2, from the project root:
 
@@ -38,6 +42,38 @@ adb reverse tcp:8787 tcp:8787
 
 Then change `API_URL` in `src/config.ts` to `http://127.0.0.1:8787` and reload.
 
+## What you see
+
+The app opens on a short splash, then the **New** screen.
+
+The bar at the bottom is the whole app. After **Save on this phone**, **On this phone** is selected and that screen opens, so the saved report is in front of you.
+
+| Button | What it does | Why it is there |
+| --- | --- | --- |
+| **New** | Note, camera, gallery, and save | This is where a report is made. Nothing is hidden on a second screen |
+| **Take a photo** | Opens the camera and adds that one photo on this screen | The inspector shoots on site |
+| **Gallery** | Opens the gallery and adds one photo on this screen | One photo is enough. Tap again to add another, up to 5. A sixth is refused |
+| **Save on this phone** | Writes the note and photos into the phone queue, then opens **On this phone** | Saving is not uploading. The server does not have it yet |
+| **On this phone** | Lists reports stored on this device, with their real status | You can see what is waiting, sending, stopped, or already accepted |
+| **On the server** | Lists only what the server returned from `GET /v1/reports` | This list is fetched. It is not a copy of the phone queue. A report appears here after the server has accepted it. **Refresh server list** asks again |
+| **Clear this phone** | Deletes the queue and photo files on this device | Start over. Reports already on the server stay there. The server wipe is the `DELETE` command below, and the phone never calls it |
+| **Normal** | Server answers again | Turns the failure off |
+| **Slow** | Server waits, then answers | A bad signal is normal. Bytes still count as progress |
+| **Drop twice** | Cuts the next two upload connections | The phone keeps the report and tries again. The photo is not stored twice |
+| **Refuse** | Server answers 503 | A refusal is retried. The report stays on the phone |
+| **Hang** | Server never answers | After 20 seconds with no bytes the phone tries again. It does not sit on a spinner |
+
+**Open Settings** is only for the camera or gallery permission. Allow it, come back, and tap the photo button again. The app does not need a restart.
+
+## How a report gets onto the server
+
+1. **Save on this phone** writes the report to a JSON file and stores the photos in app storage. No request has been made yet.
+2. If the phone is online, it creates the report with `POST /v1/reports`, then sends each photo with `PUT /v1/reports/:id/images/:imageId`.
+3. Each photo is acknowledged on its own. A kill after photo two leaves photo three pending. Finished photos are not sent again.
+4. **On the server** calls `GET /v1/reports` and shows that response. Until the server accepts the photos, the report is only under **On this phone**.
+
+The same report id sent again returns the same report. The same photo id sent again does not write a second file.
+
 ## Tests
 
 The upload rules run with no screen:
@@ -54,17 +90,7 @@ npm run test:server
 
 ## Make it fail
 
-On the home screen, **Make the server fail** arms the next upload requests:
-
-| Button | What the server does |
-| --- | --- |
-| Normal | Answers again |
-| Slow | Waits, then answers. Bytes still count as progress |
-| Drop twice | Cuts the next two upload connections |
-| Refuse | Answers 503 |
-| Hang | Never answers. The app gives up after 20 seconds with no bytes, then tries again |
-
-Same switch from the shell:
+Use the buttons on **New**, or the shell:
 
 ```bash
 curl -X POST http://127.0.0.1:8787/v1/fault -H "Content-Type: application/json" -d "{\"mode\":\"drop\",\"requests\":2}"
@@ -78,19 +104,15 @@ To wipe the demo server, not the phone:
 curl -X DELETE http://127.0.0.1:8787/v1/reports
 ```
 
-**Clear this phone** deletes the queue and the photo files on the device. Reports already on the server stay there.
-
 ## What the main scenario does
 
 1. Turn on airplane mode.
-2. Save three reports. One of them can have five camera photos.
+2. Save three reports. One of them can have five camera photos. One photo is enough for the others.
 3. Force-quit. Open the app. The reports are still **Saved on this phone**.
 4. Turn the connection back on. Drop it twice while a photo is sending.
 5. All three reports end on the server once. Every photo is under 5 MB.
 
 A 2G link is slow, not a failure. The upload keeps going as long as bytes are moving. Silence for 20 seconds is treated as a hang and retried. A 503 is retried. A 422 or a photo that is still over 5 MB stops and says **Stopped**. It is not sent again.
-
-The server stores a report by the id the phone created. Sending that id again returns the same report. Sending the same photo id again does not write a second file.
 
 ## Decisions
 
@@ -103,6 +125,8 @@ The server stores a report by the id the phone created. Sending that id again re
 - **Network failures retry forever, with a growing pause** (2s, 5s, 15s, 30s, then 60s). A rejection does not retry.
 - **Photos are shrunk on the phone before they are queued.** The steps start at 2560px and quality 82 and only go smaller if the file is still over 5 MB. A photo that is already under the cap is copied as-is. The work happens in the native resizer, not on the JavaScript thread. The app will not start the upload while a photo is still over 5 MB.
 - **Clear this phone does not delete the server.** The server is the record of work that already arrived. The README command above wipes the demo sink when you want a clean recording.
+- **The open frame is a splash, not a login.** The brief says there is no account. The splash is local, about a second, and the queue is already recovering behind it.
+- **Three jobs sit on a bottom bar:** New, On this phone, On the server. The reviewer does not scroll to find which list is which. Gallery adds one photo at a time so a single choice is obvious, and five is only the ceiling.
 
 ## Not done
 
@@ -115,7 +139,7 @@ The server stores a report by the id the phone created. Sending that id again re
 
 Two or three minutes, with the server log visible if you can:
 
-1. Airplane mode on. Save a report with a couple of photos. Point at **Saved on this phone**.
+1. Airplane mode on. Save a report with a couple of photos. **On this phone** opens. Point at **Saved on this phone**.
 2. Force-quit and reopen. It is still there.
 3. Connection on. Tap **Drop twice**. Watch it retry, then land.
-4. Tap **Refresh server list**. Open the report so the photos are the ones the server returned.
+4. Open **On the server** and tap **Refresh server list**. Open the report so the photos are the ones the server returned.

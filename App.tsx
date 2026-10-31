@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { AppState, StatusBar } from 'react-native';
+import { useEffect, useState } from 'react';
+import { AppState, StatusBar, View } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -10,6 +10,7 @@ import { ComposeScreen } from './src/screens/ComposeScreen';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { LocalReportScreen } from './src/screens/LocalReportScreen';
 import { ServerReportScreen } from './src/screens/ServerReportScreen';
+import { SplashScreen } from './src/screens/SplashScreen';
 import { getRunner, RunnerProvider } from './src/state/QueueContext';
 import { colors } from './src/ui/theme';
 
@@ -50,13 +51,23 @@ function Gate() {
 }
 
 export default function App() {
+  const [splash, setSplash] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setSplash(false), 1200);
+    return () => clearTimeout(timer);
+  }, []);
+
   return (
     <SafeAreaProvider>
-      <StatusBar barStyle="dark-content" />
+      <StatusBar barStyle={splash ? 'light-content' : 'dark-content'} />
       <RunnerProvider>
-        <NavigationContainer>
-          <Gate />
-        </NavigationContainer>
+        <View style={{ flex: 1 }}>
+          <NavigationContainer>
+            <Gate />
+          </NavigationContainer>
+          {splash ? <SplashScreen /> : null}
+        </View>
       </RunnerProvider>
     </SafeAreaProvider>
   );

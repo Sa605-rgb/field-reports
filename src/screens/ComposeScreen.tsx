@@ -31,6 +31,10 @@ import { colors } from '../ui/theme';
 type DraftPhoto = { id: string; uri: string; bytes: number };
 
 export function ComposeScreen() {
+  return <Composer />;
+}
+
+export function Composer({ embedded = false, onSaved }: { embedded?: boolean; onSaved?: () => void }) {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const runner = useRunner();
   const [description, setDescription] = useState('');
@@ -92,7 +96,7 @@ export function ComposeScreen() {
 
   async function choosePhotos() {
     setMessage(null);
-    const result = await launchImageLibrary({ mediaType: 'photo', selectionLimit: room, quality: 1 });
+    const result = await launchImageLibrary({ mediaType: 'photo', selectionLimit: 1, quality: 1 });
     explain(result);
     await addAssets(result.assets ?? []);
   }
@@ -138,6 +142,12 @@ export function ComposeScreen() {
         images,
       };
       await runner.addReport(report);
+      if (embedded) {
+        setDescription('');
+        setPhotos([]);
+        onSaved?.();
+        return;
+      }
       navigation.replace('LocalReport', { id: reportId });
     } catch (caught) {
       await removeReportFiles(reportId);
@@ -147,59 +157,71 @@ export function ComposeScreen() {
     }
   }
 
-  return (
-    <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView contentContainerStyle={styles.page} keyboardShouldPersistTaps="handled">
-        <Text style={styles.label}>What did you see?</Text>
-        <TextInput
-          value={description}
-          onChangeText={setDescription}
-          multiline
-          maxLength={400}
-          placeholder="A short note. Required."
-          placeholderTextColor={colors.muted}
-          style={styles.input}
-        />
-        <Text style={styles.count}>{photos.length} of 5 photos</Text>
-        <View style={styles.grid}>
-          {photos.map(photo => (
-            <View key={photo.id} style={styles.tile}>
-              <Image source={{ uri: photo.uri }} style={styles.image} />
-              <Pressable accessibilityRole="button" onPress={() => remove(photo)} style={styles.remove}>
-                <Text style={styles.removeText}>Remove</Text>
-              </Pressable>
-            </View>
-          ))}
-        </View>
-        {room === 0 ? <Text style={styles.message}>A report holds at most 5 photos. Remove one to add another.</Text> : null}
-        <View style={styles.gap}>
+  const fields = (
+    <View style={embedded ? styles.embedded : undefined}>
+      <View style={styles.pair}>
+        <View style={styles.pairItem}>
           <BigButton label="Take a photo" tone="ghost" disabled={preparing || room === 0} onPress={() => {
             takePhoto();
           }} />
         </View>
-        <View style={styles.gap}>
-          <BigButton label="Choose from gallery" tone="ghost" disabled={preparing || room === 0} onPress={() => {
+        <View style={styles.pairItem}>
+          <BigButton label="Gallery" tone="ghost" disabled={preparing || room === 0} onPress={() => {
             choosePhotos();
           }} />
         </View>
-        {message ? <Text style={styles.message}>{message}</Text> : null}
-        {!message && problem ? <Text style={styles.hint}>{problem}</Text> : null}
-        <View style={styles.gap}>
-          {preparing ? (
-            <View style={styles.preparing}>
-              <ActivityIndicator color={colors.ink} />
-              <Text style={styles.preparingText}>Preparing photos on this phone. Not uploading yet.</Text>
-            </View>
-          ) : (
-            <BigButton label="Save on this phone" disabled={Boolean(problem)} onPress={() => {
-              save();
-            }} />
-          )}
-        </View>
-        <Text style={styles.hint}>Saving keeps the report on this phone. It does not mean the server has it.</Text>
-        <Pressable onPress={() => Linking.openSettings()} style={styles.settings}>
-          <Text style={styles.settingsText}>Open Settings</Text>
-        </Pressable>
+      </View>
+      <Text style={styles.count}>{photos.length === 0 ? 'One photo is enough. Five is the most.' : `${photos.length} added. One is enough, five is the most.`}</Text>
+      <View style={styles.grid}>
+        {photos.map(photo => (
+          <View key={photo.id} style={styles.tile}>
+            <Image source={{ uri: photo.uri }} style={styles.image} />
+            <Pressable accessibilityRole="button" onPress={() => remove(photo)} style={styles.remove}>
+              <Text style={styles.removeText}>Remove</Text>
+            </Pressable>
+          </View>
+        ))}
+      </View>
+      {room === 0 ? <Text style={styles.message}>A report holds at most 5 photos. Remove one to add another.</Text> : null}
+      <Text style={styles.label}>What did you see?</Text>
+      <TextInput
+        value={description}
+        onChangeText={setDescription}
+        multiline
+        maxLength={400}
+        placeholder="A short note."
+        placeholderTextColor={colors.muted}
+        style={styles.input}
+      />
+      {message ? <Text style={styles.message}>{message}</Text> : null}
+      {!message && problem ? <Text style={styles.hint}>{problem}</Text> : null}
+      <View style={styles.gap}>
+        {preparing ? (
+          <View style={styles.preparing}>
+            <ActivityIndicator color={colors.ink} />
+            <Text style={styles.preparingText}>Preparing photos on this phone. Not uploading yet.</Text>
+          </View>
+        ) : (
+          <BigButton label="Save on this phone" disabled={Boolean(problem)} onPress={() => {
+            save();
+          }} />
+        )}
+      </View>
+      <Text style={styles.hint}>This saves it on the phone. The server does not have it yet.</Text>
+      <Pressable onPress={() => Linking.openSettings()} style={styles.settings}>
+        <Text style={styles.settingsText}>Open Settings</Text>
+      </Pressable>
+    </View>
+  );
+
+  if (embedded) {
+    return fields;
+  }
+
+  return (
+    <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <ScrollView contentContainerStyle={styles.page} keyboardShouldPersistTaps="handled">
+        {fields}
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -208,7 +230,10 @@ export function ComposeScreen() {
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   page: { padding: 20, paddingBottom: 32 },
-  label: { fontSize: 16, fontWeight: '700', color: colors.ink, marginBottom: 8 },
+  embedded: { marginBottom: 8 },
+  pair: { flexDirection: 'row', gap: 8 },
+  pairItem: { flex: 1 },
+  label: { fontSize: 16, fontWeight: '700', color: colors.ink, marginTop: 14, marginBottom: 8 },
   input: {
     minHeight: 110,
     borderRadius: 14,
