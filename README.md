@@ -6,6 +6,22 @@ Saving a report on the phone and having it on the server are two different facts
 
 There is no login. The brief asked for none. The person using it is the inspector standing on site.
 
+## Screens
+
+The app starts empty. The photos in the second and third pictures are only there to show the layout. They are not shipped inside the app.
+
+**New.** Camera, gallery, and save are on the first screen.
+
+![New](screenshots/01-new.png)
+
+**On this phone.** A saved report lives here. The server does not have it yet.
+
+![On this phone](screenshots/02-on-this-phone.png)
+
+**On the server.** This list is fetched after the server accepts the photos.
+
+![On the server](screenshots/03-on-the-server.png)
+
 ## Run it
 
 You need Node 22+, JDK 17, and the Android SDK. This was checked with React Native 0.88.
